@@ -35,7 +35,6 @@
 // app.post("/check-song", async (req, res) => {
 //   try {
 //     const { url } = req.body;
-//     console.log("🔍 Checking URL:", url);
 //     const song = await Song.findOne({ url });
 
 //     if (!song) {
@@ -65,25 +64,15 @@
 //     const info = await ytdl.getInfo(url);
 //     const title = info.videoDetails.title;
 //     const artist = info.videoDetails.author.name;
-//     const format = "mp3"; // Assume audio format
-//     const qualityOptions = info.formats
-//       .map((f) => f.qualityLabel)
-//       .filter(Boolean);
-
+//     const format = "mp3";
+//     const qualityOptions = info.formats.map((f) => f.qualityLabel).filter(Boolean);
 //     const fileSize = info.formats[0]?.contentLength
 //       ? `${(info.formats[0].contentLength / (1024 * 1024)).toFixed(2)} MB`
 //       : "Unknown";
 
-//     const newSong = new Song({
-//       url,
-//       title,
-//       artist,
-//       fileSize,
-//       format,
-//       quality: qualityOptions,
-//     });
-
+//     const newSong = new Song({ url, title, artist, fileSize, format, quality: qualityOptions });
 //     await newSong.save();
+
 //     res.json({ title, artist, fileSize, format, qualityOptions });
 //   } catch (error) {
 //     console.error("❌ Error in fetch-song:", error);
@@ -91,8 +80,7 @@
 //   }
 // });
 
-
-//  // API to download video/audio
+// // API to download video/audio
 // app.get("/download", async (req, res) => {
 //   try {
 //     const { url, quality } = req.query;
@@ -102,17 +90,12 @@
 //     }
 
 //     console.log(`🎵 Downloading: ${url} | Quality: ${quality || "Best Available"}`);
-
 //     res.header("Content-Disposition", 'attachment; filename="media.mp4"');
 
 //     const info = await ytdl.getInfo(url);
-//     let format = ytdl.chooseFormat(info.formats, { quality });
-
-//     if (!format) {
-//       format =
-//         ytdl.chooseFormat(info.formats, { filter: "audioandvideo" }) ||
-//         ytdl.chooseFormat(info.formats, { filter: "audioonly" });
-//     }
+//     let format = ytdl.chooseFormat(info.formats, { quality }) || 
+//                  ytdl.chooseFormat(info.formats, { filter: "audioandvideo" }) ||
+//                  ytdl.chooseFormat(info.formats, { filter: "audioonly" });
 
 //     if (!format) {
 //       return res.status(404).json({ error: "No suitable format found" });
@@ -143,7 +126,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
+// Connect to MongoDB (Ensure MONGO_URI is set in Vercel)
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "mediaCollection" })
   .then(() => console.log("✅ Connected to MongoDB"))
@@ -165,7 +148,7 @@ const songSchema = new mongoose.Schema(
 const Song = mongoose.model("Song", songSchema);
 
 // API to check if song exists in DB
-app.post("/check-song", async (req, res) => {
+app.post("/api/check-song", async (req, res) => {
   try {
     const { url } = req.body;
     const song = await Song.findOne({ url });
@@ -182,7 +165,7 @@ app.post("/check-song", async (req, res) => {
 });
 
 // API to fetch song details and store in DB if not found
-app.post("/fetch-song", async (req, res) => {
+app.post("/api/fetch-song", async (req, res) => {
   try {
     const { url } = req.body;
     if (!ytdl.validateURL(url)) {
@@ -214,7 +197,7 @@ app.post("/fetch-song", async (req, res) => {
 });
 
 // API to download video/audio
-app.get("/download", async (req, res) => {
+app.get("/api/download", async (req, res) => {
   try {
     const { url, quality } = req.query;
 
@@ -241,5 +224,6 @@ app.get("/download", async (req, res) => {
   }
 });
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Export the Express app for Vercel
+module.exports = app;
+
