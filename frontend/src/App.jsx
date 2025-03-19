@@ -1,4 +1,4 @@
-
+ 
 // import { useState } from "react";
 // import axios from "axios";
 // import "./index.css";
@@ -7,6 +7,7 @@
 //   const [url, setUrl] = useState("");
 //   const [songDetails, setSongDetails] = useState(null);
 //   const [loading, setLoading] = useState(false);
+//   const [downloading, setDownloading] = useState(false);
 //   const [selectedQuality, setSelectedQuality] = useState("");
 
 //   const checkSong = async () => {
@@ -32,9 +33,10 @@
 //   };
 
 //   const handleDownload = async () => {
+//     setDownloading(true);
 //     try {
 //       const response = await axios.get("http://localhost:5000/download", {
-//         params: { url, quality: selectedQuality || "" }, // Quality is optional
+//         params: { url, quality: selectedQuality || "" }, 
 //         responseType: "blob",
 //       });
 
@@ -48,6 +50,7 @@
 //     } catch (error) {
 //       alert("❌ Failed to download the media");
 //     }
+//     setDownloading(false);
 //   };
 
 //   return (
@@ -65,7 +68,7 @@
 //           className="input-field"
 //         />
 //         <button onClick={checkSong} disabled={loading} className="btn">
-//           {loading ? "Checking..." : "Get Details"}
+//           {loading ? <span className="loader"></span> : "Get Details"}
 //         </button>
 
 //         {songDetails && (
@@ -89,21 +92,22 @@
 //               ))}
 //             </select>
 
-//             <button onClick={handleDownload} className="btn download-btn">
-//               Download
+//             <button onClick={handleDownload} className="btn download-btn" disabled={downloading}>
+//               {downloading ? <span className="loader"></span> : "Download"}
 //             </button>
 //           </div>
 //         )}
 //       </main>
 
 //       <footer>
-//         <p>&copy; 2025 Song Downloader | Built by Abhishek</p>
+//         <p>&copy;2025 Song Downloader</p>
 //       </footer>
 //     </div>
 //   );
 // }
 
 // export default App;
+
 
 import { useState } from "react";
 import axios from "axios";
@@ -124,12 +128,12 @@ function App() {
 
     setLoading(true);
     try {
-      const checkResponse = await axios.post("http://localhost:5000/check-song", { url });
+      const checkResponse = await axios.post(`${process.env.REACT_APP_API_URL}/api/check-song`, { url });
 
       if (checkResponse.data.found) {
         setSongDetails(checkResponse.data.data);
       } else {
-        const fetchResponse = await axios.post("http://localhost:5000/fetch-song", { url });
+        const fetchResponse = await axios.post(`${process.env.REACT_APP_API_URL}/api/fetch-song`, { url });
         setSongDetails(fetchResponse.data);
       }
     } catch (error) {
@@ -139,17 +143,19 @@ function App() {
   };
 
   const handleDownload = async () => {
+    if (!songDetails) return;
+
     setDownloading(true);
     try {
-      const response = await axios.get("http://localhost:5000/download", {
-        params: { url, quality: selectedQuality || "" }, 
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/download`, {
+        params: { url, quality: selectedQuality || "" },
         responseType: "blob",
       });
 
       const blob = new Blob([response.data], { type: "video/mp4" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = "media.mp4";
+      link.download = `${songDetails.title.replace(/[^\w\s]/gi, "") || "media"}.mp4`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -190,10 +196,10 @@ function App() {
               value={selectedQuality}
               onChange={(e) => setSelectedQuality(e.target.value)}
               className="select-box"
-              disabled={!Array.isArray(songDetails.qualityOptions) || songDetails.qualityOptions.length === 0}
+              disabled={!Array.isArray(songDetails.quality) || songDetails.quality.length === 0}
             >
               <option value="">Best Available</option>
-              {songDetails.qualityOptions?.map((quality, index) => (
+              {songDetails.quality?.map((quality, index) => (
                 <option key={index} value={quality}>{quality}</option>
               ))}
             </select>
