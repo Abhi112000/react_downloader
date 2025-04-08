@@ -113,12 +113,13 @@
 
 
 
+/* To start the frontend: "npm run dev" */
 
 import { useState } from "react";
 import axios from "axios";
 import "./index.css";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL;
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
 function App() {
   const [url, setUrl] = useState("");
@@ -135,12 +136,16 @@ function App() {
 
     setLoading(true);
     try {
-      const checkResponse = await axios.post(`${BASE_URL}/check-song`, { url });
+      const checkResponse = await axios.post(`${BACKEND_URL}api/check-song`, {
+        url,
+      });
 
       if (checkResponse.data.found) {
         setSongDetails(checkResponse.data.data);
       } else {
-        const fetchResponse = await axios.post(`${BASE_URL}/fetch-song`, { url });
+        const fetchResponse = await axios.post(`${BACKEND_URL}api/fetch-song`, {
+          url,
+        });
         setSongDetails(fetchResponse.data);
       }
     } catch (error) {
@@ -152,7 +157,7 @@ function App() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const response = await axios.get(`${BASE_URL}/download`, {
+      const response = await axios.get(`${BACKEND_URL}api/download`, {
         params: { url, quality: selectedQuality || "" },
         responseType: "blob",
       });
@@ -191,12 +196,22 @@ function App() {
         {songDetails && (
           <div className="song-details">
             <h3>🎵 Song Details</h3>
-            <p><strong>Title:</strong> {songDetails.title || "Unknown Title"}</p>
-            <p><strong>Artist:</strong> {songDetails.artist || "Unknown Artist"}</p>
-            <p><strong>File Size:</strong> {songDetails.fileSize || "N/A"}</p>
-            <p><strong>Format:</strong> {songDetails.format || "N/A"}</p>
+            <p>
+              <strong>Title:</strong> {songDetails.title || "Unknown Title"}
+            </p>
+            <p>
+              <strong>Artist:</strong> {songDetails.artist || "Unknown Artist"}
+            </p>
+            <p>
+              <strong>File Size:</strong> {songDetails.fileSize || "N/A"}
+            </p>
+            <p>
+              <strong>Format:</strong> {songDetails.format || "N/A"}
+            </p>
 
-            <p><strong>Select Quality (Optional):</strong></p>
+            <p>
+              <strong>Select Quality (Optional):</strong>
+            </p>
             <select
               value={selectedQuality}
               onChange={(e) => setSelectedQuality(e.target.value)}
