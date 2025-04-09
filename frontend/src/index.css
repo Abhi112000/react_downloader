@@ -68,7 +68,6 @@ button:focus-visible {
 } */
 
 
-/* 
  
 body {
   background-color: #f8f9fa;  
@@ -158,81 +157,6 @@ footer {
   margin-top: 20px;
   font-size: 14px;
   color: #555;
-}  */
+}  
 
 
-body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-  background-color: #f2f2f2;
-  color: #333;
-}
-
-.container {
-  max-width: 700px;
-  margin: auto;
-  padding: 20px;
-  background: white;
-  border-radius: 10px;
-  margin-top: 40px;
-  box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-}
-
-header h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.input-field {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  margin-bottom: 10px;
-}
-
-.btn {
-  padding: 10px 15px;
-  font-size: 16px;
-  margin-top: 10px;
-  background-color: #3498db;
-  border: none;
-  color: white;
-  cursor: pointer;
-  border-radius: 5px;
-}
-
-.btn:disabled {
-  background-color: #95a5a6;
-  cursor: not-allowed;
-}
-
-.song-details {
-  margin-top: 20px;
-  background-color: #f9f9f9;
-  padding: 15px;
-  border-radius: 8px;
-}
-
-.select-box {
-  width: 100%;
-  padding: 8px;
-  margin-top: 5px;
-  font-size: 16px;
-}
-
-.loader {
-  width: 20px;
-  height: 20px;
-  border: 3px solid #f3f3f3;
-  border-top: 3px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
