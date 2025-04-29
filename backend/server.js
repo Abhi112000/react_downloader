@@ -1,12 +1,12 @@
 
-// To start the server: "node server.js"
-// Currently it is downloading the all video of the YT and keep storing the new URL to the database 
+// // To start the server: "node server.js"
+// // Currently it is downloading the all video of the YT and keep storing the new URL to the database 
 
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const ytdl = require("@distube/ytdl-core");
+const youtubedl = require("youtube-dl-exec");
 
 dotenv.config();
 
@@ -16,127 +16,126 @@ app.use(express.json());
 
 // MongoDB connection
 mongoose
-    .connect(process.env.MONGO_URI, { dbName: "mediaCollection" })
-    .then(() => console.log("✅ Connected to MongoDB"))
-    .catch((err) => console.error("❌ MongoDB Connection Error:", err));
+  .connect(process.env.MONGO_URI, { dbName: "mediaCollection" })
+  .then(() => console.log("✅ Connected to MongoDB"))
+  .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
 // Schema definition
 const songSchema = new mongoose.Schema(
-    {
-        url: { type: String, required: true, unique: false },
-        title: String,
-        artist: String,
-        fileSize: String,
-        format: String,
-        quality: String, // Only one quality selected
-    },
-    { collection: "media" }
+  {
+    url: { type: String, required: true },
+    title: String,
+    artist: String,
+    fileSize: String,
+    format: String,
+    quality: String,
+  },
+  { collection: "media" }
 );
-
 const Song = mongoose.model("Song", songSchema);
 
 // Check if song exists in DB
 app.post("/check-song", async (req, res) => {
-    try {
-        const { url, quality } = req.body;
-        const song = await Song.findOne({ url, quality });
-
-        if (!song) {
-            return res.json({ found: false, data: {} });
-        }
-
-        res.json({ found: true, data: song });
-    } catch (error) {
-        console.error("❌ Error in check-song:", error);
-        res.status(500).json({ error: "Internal server error" });
-    }
+  try {
+    const { url, quality } = req.body;
+    const song = await Song.findOne({ url, quality });
+    if (!song) return res.json({ found: false, data: {} });
+    res.json({ found: true, data: song });
+  } catch (error) {
+    console.error("❌ Error in check-song:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
-// Get video details without saving
+// Fetch song metadata
 app.post("/fetch-song", async (req, res) => {
-    try {
-        const { url } = req.body;
-        if (!ytdl.validateURL(url)) {
-            return res.status(400).json({ error: "Invalid URL" });
-        }
+  try {
+    const { url } = req.body;
+    if (!url.startsWith("http")) return res.status(400).json({ error: "Invalid URL" });
 
-        const info = await ytdl.getInfo(url);
-        const title = info.videoDetails.title;
-        const artist = info.videoDetails.author.name;
-        const format = "mp4";
+    const info = await youtubedl(url, {
+      dumpSingleJson: true,
+      noCheckCertificates: true,
+      noWarnings: true,
+      preferFreeFormats: true,
+    });
 
-        const formatDetails = info.formats
-            .filter((f) => f.qualityLabel && f.contentLength)
-            .map((f) => ({
-                quality: f.qualityLabel,
-                fileSize: `${(f.contentLength / (1024 * 1024)).toFixed(2)} MB`,
-            }));
+    const title = info.title;
+    const artist = info.uploader;
+    const format = "mp4";
 
-        // Remove duplicate qualities (keep first occurrence)
-        const uniqueQualities = Array.from(
-            new Map(formatDetails.map((f) => [f.quality, f])).values()
-        );
+    const formatDetails = info.formats
+      .filter(f => f.format_id && f.filesize && f.format_note)
+      .map(f => ({
+        quality: f.format_note,
+        fileSize: `${(f.filesize / (1024 * 1024)).toFixed(2)} MB`,
+        formatId: f.format_id
+      }));
 
-        res.json({
-            title,
-            artist,
-            format,
-            qualityOptions: uniqueQualities.map((q) => q.quality),
-            qualityDetails: uniqueQualities, // [{ quality: "360p", fileSize: "7.53 MB" }, ...]
-        });
-    } catch (error) {
-        console.error("❌ Error in fetch-song:", error);
-        res.status(500).json({ error: "Failed to fetch song details" });
-    }
+    // Remove duplicates by quality
+    const uniqueQualities = Array.from(
+      new Map(formatDetails.map(f => [f.quality, f])).values()
+    );
+
+    res.json({
+      title,
+      artist,
+      format,
+      qualityOptions: uniqueQualities.map(q => q.quality),
+      qualityDetails: uniqueQualities,
+    });
+  } catch (error) {
+    console.error("❌ Error in fetch-song:", error);
+    res.status(500).json({ error: "Failed to fetch song details" });
+  }
 });
 
-// Download and save on download only
-// Download and save on download only (always save to DB)
+// Download + save
 app.get("/download", async (req, res) => {
-    try {
-        const { url, quality } = req.query;
+  try {
+    const { url, quality } = req.query;
+    if (!url.startsWith("http")) return res.status(400).json({ error: "Invalid URL" });
 
-        if (!ytdl.validateURL(url)) {
-            return res.status(400).json({ error: "Invalid URL" });
-        }
+    const info = await youtubedl(url, {
+      dumpSingleJson: true,
+    });
 
-        const info = await ytdl.getInfo(url);
+    const selectedFormat = info.formats.find(f => f.format_note === quality && f.filesize);
 
-        // Try to match requested quality
-        const format = ytdl.chooseFormat(info.formats, {
-            quality: info.formats.find((f) => f.qualityLabel === quality)?.itag,
-        });
-
-        if (!format || !format.contentLength) {
-            return res.status(404).json({ error: "Requested quality not available" });
-        }
-
-        const fileSize = `${(format.contentLength / (1024 * 1024)).toFixed(2)} MB`;
-        const title = info.videoDetails.title;
-        const artist = info.videoDetails.author.name;
-
-        // Always save to DB (skip checking for existing record)
-        const newSong = new Song({
-            url,
-            title,
-            artist,
-            fileSize,
-            format: "mp4",
-            quality,
-        });
-        await newSong.save().catch(err => {
-            // Handle duplicate key error silently if needed
-            if (err.code !== 11000) throw err;
-        });
-
-        res.header("Content-Disposition", `attachment; filename="media.mp4"`);
-        ytdl(url, { format }).pipe(res);
-    } catch (error) {
-        console.error("❌ Error in /download:", error);
-        res.status(500).json({ error: "Download failed" });
+    if (!selectedFormat) {
+      return res.status(404).json({ error: "Requested quality not available" });
     }
-});
 
+    const fileSize = `${(selectedFormat.filesize / (1024 * 1024)).toFixed(2)} MB`;
+    const title = info.title;
+    const artist = info.uploader;
+
+    const newSong = new Song({
+      url,
+      title,
+      artist,
+      fileSize,
+      format: "mp4",
+      quality,
+    });
+
+    await newSong.save().catch(err => {
+      if (err.code !== 11000) throw err;
+    });
+
+    res.setHeader("Content-Disposition", `attachment; filename="media.mp4"`);
+
+    const stream = youtubedl.exec(url, {
+      format: selectedFormat.format_id,
+      output: "-",
+    });
+
+    stream.stdout.pipe(res);
+  } catch (error) {
+    console.error("❌ Error in /download:", error);
+    res.status(500).json({ error: "Download failed" });
+  }
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

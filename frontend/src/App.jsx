@@ -36,7 +36,11 @@ function App() {
 
     setLoading(true);
     try {
-      const checkResponse = await axios.post("http://localhost:5000/check-song", { url });
+      const checkResponse = await axios.post("http://localhost:5000/check-song", {
+        url,
+        quality: selectedQuality || "",
+      });
+      
 
       if (checkResponse.data.found) {
         setSongDetails(checkResponse.data.data);
@@ -119,20 +123,6 @@ function App() {
             <p><strong>Artist:</strong> {songDetails.artist || "Unknown Artist"}</p>
             <p><strong>File Size:</strong> {displayedFileSize || "N/A"}</p>
             <p><strong>Format:</strong> {songDetails.format || "N/A"}</p>
-
-            {/* {songDetails.qualityDetails?.length > 0 && (
-              <>
-                <label>Select Quality:</label>
-                <select value={selectedQuality} onChange={handleQualityChange}>
-                  <option value="">Auto</option>
-                  {songDetails.qualityDetails.map((q) => (
-                    <option key={q.quality} value={q.quality}>
-                      {q.quality}
-                    </option>
-                  ))}
-                </select>
-              </>
-            )} */}
 
             <div className="quality-download-section">
               <div className="quality-dropdown">
