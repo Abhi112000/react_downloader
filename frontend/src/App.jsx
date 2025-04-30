@@ -164,7 +164,7 @@
 // export default App;
 
 
-
+ 
 
 
 /* To start the frontend: "npm run dev" */
@@ -172,6 +172,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import "./index.css";
+
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 
 function App() {
   const [url, setUrl] = useState("");
@@ -204,11 +206,10 @@ function App() {
 
     setLoading(true);
     try {
-      const checkResponse = await axios.post("https://ytdownloader-beta.vercel.app/check-song", {
+      const checkResponse = await axios.post(`${BASE_URL}/check-song`, {
         url,
         quality: selectedQuality || "",
       });
-      
 
       if (checkResponse.data.found) {
         setSongDetails(checkResponse.data.data);
@@ -216,7 +217,7 @@ function App() {
         setDisplayedFileSize(fileSize);
         setPersistedFileSize(fileSize);
       } else {
-        const fetchResponse = await axios.post("https://ytdownloader-beta.vercel.app/fetch-song", { url });
+        const fetchResponse = await axios.post(`${BASE_URL}/fetch-song`, { url });
         setSongDetails(fetchResponse.data);
         const fileSize = fetchResponse.data.fileSize || "";
         setDisplayedFileSize(fileSize);
@@ -233,7 +234,7 @@ function App() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
-      const response = await axios.get("https://ytdownloader-beta.vercel.app/download", {
+      const response = await axios.get(`${BASE_URL}/download`, {
         params: { url, quality: selectedQuality || "" },
         responseType: "blob",
       });
@@ -309,9 +310,7 @@ function App() {
                   ))}
                 </select>
               </div>
-
             </div>
-
 
             <div style={{ position: "relative", marginTop: "20px" }}>
               <button onClick={handleDownload} disabled={downloading} className="btn">
