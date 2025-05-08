@@ -173,7 +173,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import "./index.css";
 
-const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BASE_URLs = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const BASE_URL = BASE_URLs.replace(/\/$/, ""); // ✅ Remove trailing slash
 
 function App() {
   const [url, setUrl] = useState("");
