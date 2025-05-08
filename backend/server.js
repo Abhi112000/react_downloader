@@ -157,7 +157,7 @@ const app = express();
 // Dynamic CORS for Vercel frontend
 app.use(
   cors({
-    origin: ["https://ytdownloaderf.vercel.app/"], // ✅ Update with your exact frontend URL
+    origin: ["https://ytdownloaderf.vercel.app"], // ✅ Update with your exact frontend URL
     methods: ["GET", "POST"],
     credentials: true,
   })
@@ -288,6 +288,11 @@ app.get("/download", async (req, res) => {
     res.status(500).json({ error: "Download failed" });
   }
 });
+
+app.get("/", (req, res) => {
+  res.send("✅ YouTube Downloader backend is running!");
+});
+
 
 // Start server
 const PORT = process.env.PORT || 5000;
