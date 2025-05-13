@@ -310,22 +310,28 @@ dotenv.config();
 
 const app = express();
 
+// ✅ Update CORS for dev + production (Vercel + localhost + ngrok if needed)
 app.use(
   cors({
-    origin: ["https://ytdownloaderf.vercel.app"], // Your frontend
+    origin: [
+      "https://ytdownloaderf.vercel.app", // your frontend on vercel
+      "http://localhost:3000", // optional for local testing
+      "https://7fdb-14-141-174-122.ngrok-free.app" // optional if you frontend uses this
+    ],
     methods: ["GET", "POST"],
     credentials: true,
   })
 );
+
 app.use(express.json());
 
-// MongoDB
+// ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "mediaCollection" })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// Schema
+// ✅ Mongoose schema
 const songSchema = new mongoose.Schema(
   {
     url: { type: String, required: true },
@@ -337,9 +343,10 @@ const songSchema = new mongoose.Schema(
   },
   { collection: "media" }
 );
+
 const Song = mongoose.model("Song", songSchema);
 
-// POST /check-song
+// ✅ POST /check-song
 app.post("/check-song", async (req, res) => {
   try {
     const { url, quality } = req.body;
@@ -352,14 +359,14 @@ app.post("/check-song", async (req, res) => {
   }
 });
 
-// POST /fetch-song
+// ✅ POST /fetch-song
 app.post("/fetch-song", async (req, res) => {
   try {
     let { url } = req.body;
     if (!url || !url.startsWith("http"))
       return res.status(400).json({ error: "Invalid URL" });
 
-    url = url.split("?")[0]; // Remove extra params
+    url = url.split("?")[0]; // remove params
 
     const info = await youtubedl(url, {
       dumpSingleJson: true,
@@ -396,14 +403,14 @@ app.post("/fetch-song", async (req, res) => {
   }
 });
 
-// GET /download
+// ✅ GET /download
 app.get("/download", async (req, res) => {
   try {
     let { url, quality } = req.query;
     if (!url || !url.startsWith("http"))
       return res.status(400).json({ error: "Invalid URL" });
 
-    url = url.split("?")[0]; // Clean
+    url = url.split("?")[0];
 
     const info = await youtubedl(url, {
       dumpSingleJson: true,
@@ -440,9 +447,11 @@ app.get("/download", async (req, res) => {
   }
 });
 
+// ✅ Test route
 app.get("/", (req, res) => {
   res.send("✅ YouTube Downloader backend is running!");
 });
 
+// ✅ Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

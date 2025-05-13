@@ -174,7 +174,7 @@ import axios from "axios";
 import "./index.css";
 
 const BASE_URLs = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
-const BASE_URL = BASE_URLs.replace(/\/$/, ""); // ✅ Remove trailing slash
+const BASE_URL = BASE_URLs
 
 function App() {
   const [url, setUrl] = useState("");
