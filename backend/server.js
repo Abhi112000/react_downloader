@@ -300,34 +300,32 @@
 
 
 
-
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const youtubedl = require("youtube-dl-exec");
+const youtubedl = require("youtube-dl-exec").raw;
 
 dotenv.config();
 
 const app = express();
 
-// CORS setup for frontend
 app.use(
   cors({
-    origin: ["https://ytdownloaderf.vercel.app"],
+    origin: ["https://ytdownloaderf.vercel.app"], // Your frontend
     methods: ["GET", "POST"],
     credentials: true,
   })
 );
 app.use(express.json());
 
-// MongoDB connection
+// MongoDB
 mongoose
   .connect(process.env.MONGO_URI, { dbName: "mediaCollection" })
   .then(() => console.log("✅ Connected to MongoDB"))
   .catch((err) => console.error("❌ MongoDB Connection Error:", err));
 
-// Mongoose schema
+// Schema
 const songSchema = new mongoose.Schema(
   {
     url: { type: String, required: true },
@@ -347,8 +345,7 @@ app.post("/check-song", async (req, res) => {
     const { url, quality } = req.body;
     const query = quality ? { url, quality } : { url };
     const song = await Song.findOne(query);
-    if (!song) return res.json({ found: false, data: {} });
-    res.json({ found: true, data: song });
+    res.json({ found: !!song, data: song || {} });
   } catch (error) {
     console.error("❌ Error in check-song:", error);
     res.status(500).json({ error: "Internal server error" });
@@ -358,21 +355,21 @@ app.post("/check-song", async (req, res) => {
 // POST /fetch-song
 app.post("/fetch-song", async (req, res) => {
   try {
-    const { url } = req.body;
+    let { url } = req.body;
     if (!url || !url.startsWith("http"))
       return res.status(400).json({ error: "Invalid URL" });
+
+    url = url.split("?")[0]; // Remove extra params
 
     const info = await youtubedl(url, {
       dumpSingleJson: true,
       noCheckCertificates: true,
       noWarnings: true,
       preferFreeFormats: true,
-      geoBypass: true, // ✅ Added
+      geoBypass: true,
+      noPlaylist: true,
+      restrictFilenames: true,
     });
-
-    const title = info.title;
-    const artist = info.uploader;
-    const format = "mp4";
 
     const formatDetails = info.formats
       .filter((f) => f.format_id && f.filesize && f.format_note)
@@ -387,9 +384,9 @@ app.post("/fetch-song", async (req, res) => {
     );
 
     res.json({
-      title,
-      artist,
-      format,
+      title: info.title,
+      artist: info.uploader,
+      format: "mp4",
       qualityOptions: uniqueQualities.map((q) => q.quality),
       qualityDetails: uniqueQualities,
     });
@@ -402,36 +399,30 @@ app.post("/fetch-song", async (req, res) => {
 // GET /download
 app.get("/download", async (req, res) => {
   try {
-    const { url, quality } = req.query;
+    let { url, quality } = req.query;
     if (!url || !url.startsWith("http"))
       return res.status(400).json({ error: "Invalid URL" });
 
+    url = url.split("?")[0]; // Clean
+
     const info = await youtubedl(url, {
       dumpSingleJson: true,
-      geoBypass: true, // ✅ Added
+      noCheckCertificates: true,
+      geoBypass: true,
     });
 
     const selectedFormat = info.formats.find(
       (f) => f.format_note === quality && f.filesize
     );
-
     if (!selectedFormat)
       return res.status(404).json({ error: "Requested quality not available" });
 
     const fileSize = `${(selectedFormat.filesize / (1024 * 1024)).toFixed(2)} MB`;
-    const title = info.title;
-    const artist = info.uploader;
+    const { title, uploader: artist } = info;
 
-    const existing = await Song.findOne({ url, quality });
-    if (!existing) {
-      const newSong = new Song({
-        url,
-        title,
-        artist,
-        fileSize,
-        format: "mp4",
-        quality,
-      });
+    const exists = await Song.findOne({ url, quality });
+    if (!exists) {
+      const newSong = new Song({ url, title, artist, fileSize, format: "mp4", quality });
       await newSong.save();
     }
 
@@ -440,7 +431,6 @@ app.get("/download", async (req, res) => {
     const stream = youtubedl.exec(url, {
       format: selectedFormat.format_id,
       output: "-",
-      geoBypass: true, // ✅ Added to stream call as well
     });
 
     stream.stdout.pipe(res);
@@ -450,11 +440,9 @@ app.get("/download", async (req, res) => {
   }
 });
 
-// Default route
 app.get("/", (req, res) => {
   res.send("✅ YouTube Downloader backend is running!");
 });
 
-// Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));

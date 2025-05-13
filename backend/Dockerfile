@@ -1,27 +1,25 @@
-# 1. Node base image with Debian (apt support)
-FROM node:18-slim
+# Use Node.js base image
+FROM node:18
 
-# 2. Install Python3, pip, and ffmpeg
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# 3. Create app directory
+# Create app directory
 WORKDIR /app
 
-# 4. Copy package.json & package-lock.json first (for caching)
+# Copy package.json and install dependencies
 COPY package*.json ./
-
-# 5. Install dependencies
 RUN npm install
 
-# 6. Copy rest of your app code
+# Install latest yt-dlp manually
+RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
+    chmod +x /usr/local/bin/yt-dlp
+
+# Force youtube-dl-exec to use system yt-dlp
+ENV YOUTUBE_DL_PATH=/usr/local/bin/yt-dlp
+
+# Copy rest of the app
 COPY . .
 
-# 7. Expose port (optional but helpful)
+# Expose port
 EXPOSE 5000
 
-# 8. Run server
-CMD ["node", "server.js"]
+# Start server
+CMD [ "node", "server.js" ]
